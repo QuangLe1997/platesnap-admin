@@ -1,14 +1,18 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, getDocs, Timestamp, query, limit } from 'firebase/firestore';
+import { config } from 'dotenv';
 
-// Firebase config (same as .env.local)
+// Load environment variables from .env.local
+config({ path: '.env.local' });
+
+// Firebase config from environment variables
 const firebaseConfig = {
-  apiKey: 'AIzaSyD61G3rfJkTp8nTrETmweNx9T1Qxf_zjoE',
-  authDomain: 'plate-8f4d6.firebaseapp.com',
-  projectId: 'plate-8f4d6',
-  storageBucket: 'plate-8f4d6.firebasestorage.app',
-  messagingSenderId: '677728993716',
-  appId: '1:677728993716:web:d5cd355eda1a4ca6ad32e1',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
