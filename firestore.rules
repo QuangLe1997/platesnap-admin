@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to all documents for now
+    // In production, you should add proper authentication rules
+
+    // Admin collection - allow read for authentication, write for setup
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+
+    // Blocks collection
+    match /blocks/{blockId} {
+      allow read, write: if true;
+    }
+
+    // Apartments collection
+    match /apartments/{apartmentId} {
+      allow read, write: if true;
+    }
+
+    // Residents collection
+    match /residents/{residentId} {
+      allow read, write: if true;
+    }
+
+    // Vehicles collection
+    match /vehicles/{vehicleId} {
+      allow read, write: if true;
+    }
+  }
+}

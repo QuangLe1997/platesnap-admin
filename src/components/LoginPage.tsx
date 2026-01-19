@@ -2,16 +2,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { seedDatabase } from '@/lib/db/seed';
 
 export default function LoginPage() {
-  const { login, needsSetup } = useAuth();
+  const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [seedMessage, setSeedMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,18 +22,6 @@ export default function LoginPage() {
     setIsLoading(false);
   };
 
-  const handleSeedData = async () => {
-    setIsSeeding(true);
-    setSeedMessage('');
-    const result = await seedDatabase();
-    setSeedMessage(result.message);
-    setIsSeeding(false);
-    if (result.success) {
-      // Reload page to update needsSetup status
-      window.location.reload();
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-700 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
@@ -47,24 +32,6 @@ export default function LoginPage() {
           </h1>
           <p className="text-gray-500 mt-2">Hệ thống quản lý chung cư</p>
         </div>
-
-        {needsSetup && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm mb-3">
-              ⚠️ Chưa có dữ liệu. Nhấn nút bên dưới để tạo dữ liệu mẫu.
-            </p>
-            <button
-              onClick={handleSeedData}
-              disabled={isSeeding}
-              className="w-full bg-yellow-500 text-white py-2 rounded-lg hover:bg-yellow-600 disabled:opacity-50"
-            >
-              {isSeeding ? 'Đang tạo dữ liệu...' : 'Tạo dữ liệu mẫu'}
-            </button>
-            {seedMessage && (
-              <p className="mt-2 text-sm text-center text-gray-600">{seedMessage}</p>
-            )}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
