@@ -63,31 +63,48 @@ export async function authenticateAdmin(
   username: string,
   password: string
 ): Promise<AdminUser | null> {
-  const q = query(
-    collection(db, COLLECTION_NAME),
-    where('username', '==', username)
-  );
-  const querySnapshot = await getDocs(q);
+  console.log('[Auth] Starting authentication for:', username);
 
-  if (querySnapshot.empty) {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('username', '==', username)
+    );
+    console.log('[Auth] Querying database...');
+    const querySnapshot = await getDocs(q);
+    console.log('[Auth] Query complete, found:', querySnapshot.size, 'results');
+
+    if (querySnapshot.empty) {
+      console.log('[Auth] No user found with username:', username);
+      return null;
+    }
+
+    const docSnap = querySnapshot.docs[0];
+    const data = docSnap.data();
+    const inputHash = simpleHash(password);
+
+    console.log('[Auth] DB hash:', data.passwordHash);
+    console.log('[Auth] Input hash:', inputHash);
+    console.log('[Auth] Match:', data.passwordHash === inputHash);
+
+    if (data.passwordHash === inputHash) {
+      // Update last login
+      await updateDoc(doc(db, COLLECTION_NAME, docSnap.id), {
+        lastLoginAt: Timestamp.now(),
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { passwordHash, ...rest } = data;
+      console.log('[Auth] Login successful for:', username);
+      return { id: docSnap.id, ...rest } as AdminUser;
+    }
+
+    console.log('[Auth] Password mismatch for:', username);
     return null;
+  } catch (error) {
+    console.error('[Auth] Error during authentication:', error);
+    throw error;
   }
-
-  const docSnap = querySnapshot.docs[0];
-  const data = docSnap.data();
-
-  if (data.passwordHash === simpleHash(password)) {
-    // Update last login
-    await updateDoc(doc(db, COLLECTION_NAME, docSnap.id), {
-      lastLoginAt: Timestamp.now(),
-    });
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { passwordHash, ...rest } = data;
-    return { id: docSnap.id, ...rest } as AdminUser;
-  }
-
-  return null;
 }
 
 export async function updateAdminPassword(id: string, newPassword: string): Promise<void> {
