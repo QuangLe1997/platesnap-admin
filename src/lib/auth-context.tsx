@@ -2,12 +2,11 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { AdminUser } from './types';
-import { authenticateAdmin, hasAnyAdmin } from './db/admins';
+import { authenticateAdmin } from './db/admins';
 
 interface AuthContextType {
   user: AdminUser | null;
   isLoading: boolean;
-  needsSetup: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
@@ -19,17 +18,11 @@ const STORAGE_KEY = 'platesnap_admin_session';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [needsSetup, setNeedsSetup] = useState(false);
 
   useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
+    // Check for existing session from localStorage only (no Firebase call)
+    const checkSession = () => {
       try {
-        // Check if any admin exists
-        const adminExists = await hasAnyAdmin();
-        setNeedsSetup(!adminExists);
-
-        // Check localStorage for session
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const session = JSON.parse(stored);
@@ -78,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, needsSetup, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
