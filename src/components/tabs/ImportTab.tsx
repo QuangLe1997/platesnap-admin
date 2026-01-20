@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { seedDatabase } from '@/lib/db/seed';
 import { createBlock, getAllBlocks } from '@/lib/db/blocks';
 import { createApartment, getAllApartments } from '@/lib/db/apartments';
 import { createResident } from '@/lib/db/residents';
 import { createVehicle } from '@/lib/db/vehicles';
-import { Block, Apartment } from '@/lib/types';
 import {
   Upload,
   Download,
@@ -19,12 +17,12 @@ import {
   CheckCircle,
   AlertTriangle,
   X,
-  Database,
   FileJson,
   Info,
   ArrowRight,
-  Sparkles,
-  FolderOpen
+  FolderOpen,
+  Eye,
+  Table
 } from 'lucide-react';
 
 type ImportType = 'blocks' | 'apartments' | 'residents' | 'vehicles';
@@ -33,8 +31,6 @@ export default function ImportTab() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number; errors: string[] } | null>(null);
   const [selectedType, setSelectedType] = useState<ImportType>('blocks');
-  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
-  const [seedResult, setSeedResult] = useState<{ success: boolean; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const importTypes = [
@@ -162,8 +158,6 @@ export default function ImportTab() {
           }
 
           case 'vehicles': {
-            // Need to find resident first
-            // For simplicity, use apartmentCode to link
             const apartment = apartmentMap.get(String(item.apartmentCode || '').toUpperCase());
             if (!apartment) {
               throw new Error(`Căn hộ ${item.apartmentCode} không tồn tại`);
@@ -198,19 +192,6 @@ export default function ImportTab() {
     return { success, failed, errors };
   };
 
-  const handleSeedData = async () => {
-    setShowSeedConfirm(false);
-    setIsImporting(true);
-    setSeedResult(null);
-    try {
-      const result = await seedDatabase();
-      setSeedResult({ success: true, message: result.message });
-    } catch (error) {
-      setSeedResult({ success: false, message: 'Có lỗi xảy ra khi tạo dữ liệu mẫu' });
-    }
-    setIsImporting(false);
-  };
-
   const templates = {
     blocks: `code,name,totalFloors,description
 A,Block A - Orchid Tower,30,Tòa nhà phía Đông
@@ -227,6 +208,71 @@ Trần Thị Bích,0912345678,bich@email.com,A-101,false`,
 51B-67890,Nguyễn Văn An,A-101,motorcycle,Honda,SH,Đen`,
   };
 
+  // Sample data for preview table
+  const sampleData = {
+    blocks: {
+      headers: ['code', 'name', 'totalFloors', 'description'],
+      rows: [
+        ['A', 'Block A - Orchid Tower', '30', 'Tòa nhà phía Đông'],
+        ['B', 'Block B - Lotus Tower', '25', 'Tòa nhà phía Tây'],
+        ['C', 'Block C - Rose Tower', '20', 'Tòa nhà trung tâm'],
+      ],
+      descriptions: {
+        code: 'Mã tòa nhà (VD: A, B, C)',
+        name: 'Tên đầy đủ của tòa nhà',
+        totalFloors: 'Tổng số tầng',
+        description: 'Mô tả thêm (tùy chọn)',
+      },
+    },
+    apartments: {
+      headers: ['blockCode', 'roomNumber', 'floor', 'type', 'area'],
+      rows: [
+        ['A', '101', '1', 'Studio', '45'],
+        ['A', '102', '1', '1BR', '65'],
+        ['B', '201', '2', '2BR', '85'],
+      ],
+      descriptions: {
+        blockCode: 'Mã tòa nhà (phải tồn tại)',
+        roomNumber: 'Số phòng',
+        floor: 'Tầng',
+        type: 'Loại căn hộ (Studio, 1BR, 2BR...)',
+        area: 'Diện tích (m²)',
+      },
+    },
+    residents: {
+      headers: ['fullName', 'phone', 'email', 'apartmentCode', 'isOwner'],
+      rows: [
+        ['Nguyễn Văn An', '0901234567', 'an@email.com', 'A-101', 'true'],
+        ['Trần Thị Bích', '0912345678', 'bich@email.com', 'A-101', 'false'],
+        ['Lê Minh Tuấn', '0923456789', 'tuan@email.com', 'B-201', 'true'],
+      ],
+      descriptions: {
+        fullName: 'Họ và tên đầy đủ',
+        phone: 'Số điện thoại',
+        email: 'Email liên hệ',
+        apartmentCode: 'Mã căn hộ (phải tồn tại)',
+        isOwner: 'Chủ hộ (true/false)',
+      },
+    },
+    vehicles: {
+      headers: ['plateNumber', 'residentName', 'apartmentCode', 'vehicleType', 'brand', 'model', 'color'],
+      rows: [
+        ['51A-12345', 'Nguyễn Văn An', 'A-101', 'car', 'Toyota', 'Camry', 'Trắng'],
+        ['51B-67890', 'Nguyễn Văn An', 'A-101', 'motorcycle', 'Honda', 'SH', 'Đen'],
+        ['30H-11111', 'Lê Minh Tuấn', 'B-201', 'car', 'Mazda', 'CX-5', 'Đỏ'],
+      ],
+      descriptions: {
+        plateNumber: 'Biển số xe',
+        residentName: 'Tên chủ xe',
+        apartmentCode: 'Mã căn hộ (phải tồn tại)',
+        vehicleType: 'Loại xe (car, motorcycle, bicycle)',
+        brand: 'Hãng xe',
+        model: 'Model xe',
+        color: 'Màu sắc',
+      },
+    },
+  };
+
   const downloadTemplate = (type: ImportType) => {
     const content = templates[type];
     const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
@@ -236,9 +282,9 @@ Trần Thị Bích,0912345678,bich@email.com,A-101,false`,
     link.click();
   };
 
-  const getSelectedTypeInfo = () => {
-    return importTypes.find(t => t.id === selectedType)!;
-  };
+  const currentSample = sampleData[selectedType];
+  const currentTypeInfo = importTypes.find(t => t.id === selectedType)!;
+  const TypeIcon = currentTypeInfo.icon;
 
   return (
     <div className="space-y-6">
@@ -252,35 +298,6 @@ Trần Thị Bích,0912345678,bich@email.com,A-101,false`,
           <p className="text-sm text-slate-500">Import dữ liệu từ file CSV hoặc JSON</p>
         </div>
       </div>
-
-      {/* Seed Confirmation Modal */}
-      {showSeedConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
-                <Database className="w-8 h-8 text-amber-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Tạo dữ liệu mẫu?</h3>
-              <p className="text-slate-500 mb-6">Thao tác này sẽ thêm dữ liệu mẫu vào database. Dữ liệu hiện có sẽ không bị ảnh hưởng.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowSeedConfirm(false)}
-                  className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition font-medium"
-                >
-                  Hủy
-                </button>
-                <button
-                  onClick={handleSeedData}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition font-medium"
-                >
-                  Tạo dữ liệu
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Import Section */}
@@ -422,103 +439,92 @@ Trần Thị Bích,0912345678,bich@email.com,A-101,false`,
           </div>
         </div>
 
-        {/* Seed Data Section */}
+        {/* Sample Data Preview Section */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 text-white">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-5 h-5" />
+                <Eye className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold">Tạo dữ liệu mẫu</h3>
-                <p className="text-sm text-emerald-100">Dữ liệu test cho hệ thống</p>
+                <h3 className="font-bold">Xem dữ liệu mẫu</h3>
+                <p className="text-sm text-emerald-100">Cấu trúc file {currentTypeInfo.label}</p>
               </div>
             </div>
           </div>
 
           <div className="p-6">
-            <p className="text-slate-600 mb-4">
-              Tạo nhanh bộ dữ liệu mẫu để test các tính năng của hệ thống:
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl">
-                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-indigo-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-indigo-600">3</div>
-                  <div className="text-xs text-slate-500">Tòa nhà</div>
-                </div>
+            {/* Current type indicator */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <TypeIcon className="w-4 h-4 text-emerald-600" />
               </div>
-              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl">
-                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <Home className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-emerald-600">60</div>
-                  <div className="text-xs text-slate-500">Căn hộ</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-blue-600">10</div>
-                  <div className="text-xs text-slate-500">Cư dân</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
-                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Car className="w-4 h-4 text-amber-600" />
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-amber-600">10</div>
-                  <div className="text-xs text-slate-500">Phương tiện</div>
-                </div>
+              <div>
+                <p className="font-medium text-slate-700">{currentTypeInfo.label}</p>
+                <p className="text-xs text-slate-500">{currentSample.headers.length} cột dữ liệu</p>
               </div>
             </div>
 
-            <button
-              onClick={() => setShowSeedConfirm(true)}
-              disabled={isImporting}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3 rounded-xl font-medium hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
-            >
-              {isImporting ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Đang tạo...
-                </>
-              ) : (
-                <>
-                  <Database className="w-5 h-5" />
-                  Tạo dữ liệu mẫu
-                </>
-              )}
-            </button>
-
-            {/* Seed Result */}
-            {seedResult && (
-              <div className={`mt-4 p-4 rounded-xl border ${
-                seedResult.success
-                  ? 'bg-emerald-50 border-emerald-200'
-                  : 'bg-red-50 border-red-200'
-              }`}>
-                <div className="flex items-center gap-2">
-                  {seedResult.success ? (
-                    <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  ) : (
-                    <AlertTriangle className="w-5 h-5 text-red-600" />
-                  )}
-                  <span className={`font-medium text-sm ${
-                    seedResult.success ? 'text-emerald-800' : 'text-red-800'
-                  }`}>
-                    {seedResult.message}
-                  </span>
-                </div>
+            {/* Column descriptions */}
+            <div className="mb-4 p-3 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Table className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-medium text-slate-700">Mô tả các cột</span>
               </div>
-            )}
+              <div className="grid gap-1.5">
+                {currentSample.headers.map((header) => (
+                  <div key={header} className="flex items-start gap-2 text-xs">
+                    <code className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-mono">
+                      {header}
+                    </code>
+                    <span className="text-slate-600">
+                      {currentSample.descriptions[header as keyof typeof currentSample.descriptions]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sample table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-100">
+                    {currentSample.headers.map((header) => (
+                      <th
+                        key={header}
+                        className="px-3 py-2 text-left text-xs font-semibold text-slate-600 whitespace-nowrap"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {currentSample.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="hover:bg-slate-50">
+                      {row.map((cell, cellIndex) => (
+                        <td
+                          key={cellIndex}
+                          className="px-3 py-2 text-slate-700 whitespace-nowrap"
+                        >
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Download button */}
+            <button
+              onClick={() => downloadTemplate(selectedType)}
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3 rounded-xl font-medium hover:from-emerald-700 hover:to-teal-700 transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+            >
+              <Download className="w-5 h-5" />
+              Tải file mẫu {currentTypeInfo.label}
+            </button>
           </div>
         </div>
       </div>
